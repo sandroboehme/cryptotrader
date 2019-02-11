@@ -1,0 +1,17 @@
+{
+  "comments": [
+    "Removed the 'fromdate' parameter to configure live 'backtesting'"
+  ],
+  "initial_cash": 20,
+  "buy_pos_size": 2,
+  "slippage": 0.1,
+  "buy_limit": 7.915,
+  "fallback_stop_loss": 7.8998,
+  "exchange": "binance",
+  "symbol": "BNB/USDT",
+  "timeframe": "minutes",
+  "compression": 1,
+  "currency": "BNB",
+  "data_status4trading": "LIVE",
+  "chartFileName": "../generated/bnb-usdt-1m-live.png"
+}

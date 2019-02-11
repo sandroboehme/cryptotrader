@@ -1,0 +1,25 @@
+{
+  "comments": [
+    "Produces a case where there is no stop loss from the psar as the prices where too high in the previous cycle.",
+    "The fallback_stop_loss will be used instead."
+  ],
+  "initial_cash": 100,
+  "buy_pos_size": 10,
+  "slippage": 0.1,
+  "buy_limit": 6.66,
+  "fallback_stop_loss": 6.34,
+  "exchange": "binance",
+  "symbol": "BNB/USDT",
+  "timeframe": "minutes",
+  "compression": 15,
+  "currency": "BNB",
+  "fromdate": {
+    "year": 2019,
+    "month": 1,
+    "day": 28,
+    "hour": 3,
+    "minute": 30
+  },
+  "data_status4trading": "LIVE",
+  "chartFileName": "../generated/bnb-usdt-15m-fallback-sl.png"
+}

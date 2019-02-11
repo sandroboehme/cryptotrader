@@ -1,0 +1,21 @@
+# User-specific stuff
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+
+.DS_Store
+
+# Contains sensitive configs like the api keys
+# and other configs local to the user
+config.json
+
+# PyCharm Cache files
+*.pyc
+
+# The installed environment
+env
+
+# Some generated files
+test/strategy/generated/**

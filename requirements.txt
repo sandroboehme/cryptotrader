@@ -1,0 +1,4 @@
+# git+git://github.com/Dave-Vallance/bt-ccxt-store.git@master#egg=bt_ccxt_store
+# I use my develop branch until a pull request has been merged by Dave
+git+git://github.com/sandroboehme/bt-ccxt-store.git@develop#egg=bt_ccxt_store
+backtrader[plotting]

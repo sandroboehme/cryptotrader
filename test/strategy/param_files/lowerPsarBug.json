@@ -1,0 +1,24 @@
+{
+  "comments": [
+    "Produces a bug where the uptrending psar gets lower."
+  ],
+  "initial_cash": 100,
+  "buy_pos_size": 10,
+  "slippage": 0.1,
+  "buy_limit": 6.245,
+  "fallback_stop_loss": 6.235,
+  "exchange": "binance",
+  "symbol": "BNB/USDT",
+  "timeframe": "minutes",
+  "compression": 1,
+  "currency": "BNB",
+  "fromdate": {
+    "year": 2019,
+    "month": 1,
+    "day": 28,
+    "hour": 22,
+    "minute": 40
+  },
+  "data_status4trading": "LIVE",
+  "chartFileName": "../generated/bnb-usdt-1m-psar-bug.png"
+}
