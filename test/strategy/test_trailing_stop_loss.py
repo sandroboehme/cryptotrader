@@ -1,7 +1,7 @@
 
 import unittest
 
-from test import backtesting
+import backtesting
 
 
 class TestTrailingStopLoss(unittest.TestCase):

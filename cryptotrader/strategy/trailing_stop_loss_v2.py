@@ -22,7 +22,7 @@ class TrailingStopLossV2(Strategy):
             else self.params.data_status4trading
 
     def next(self):
-        self.log('Close, %.4f psar: %.4f' % (self.datas[0].close[0], self.psar[0]))
+        self.log('Close, %.4f psar: %.4f in next()' % (self.datas[0].close[0], self.psar[0]))
 
         if self.data_status4trading == self.params.data_status4trading:
             # Check if an order is pending ... if yes, we cannot send a 2nd one
@@ -32,7 +32,7 @@ class TrailingStopLossV2(Strategy):
                         and self.sell_order.status == 2: # if accepted
                     self.cancel(self.sell_order)
                     self.sell_order_canceled = True
-                    self.log('canceled sell order {}'.format(self.sell_order.ref))
+                    self.log(f'Order #{self.sell_order.ref} canceled in next()')
 
             elif not self.buy_order and self.datas[0].close[0] < self.params.buy_limit:
                 # use limit buy order and interrupt the program if the market price is below the order price
@@ -50,23 +50,22 @@ class TrailingStopLossV2(Strategy):
         self.data_status4trading = data._getstatusname(status)
 
     def notify_order(self, order, *args, **kwargs):
+        self.log(f'Order #{order.ref} {Order.Status[order.status]}')
         if self.sell_order and self.sell_order.ref == order.ref:
-            if order.status == 5: # Order canceled
-                self.log('notify canceled sell order {}'.format(self.sell_order.ref))
+            if order.status == 5:  # Order canceled
                 prev_sell_order_price = self.sell_order.params.price
                 # send a sell order with the updated psar as stopPrice
                 self.sell_order = self.sell(size=self.params.buy_pos_size, exectype=Order.StopLimit,
                                             price=self.psar.lines.psar[0],
-                                            plimit=self.psar.lines.psar[0] - self.params.slippage,
-                                            pricelimit=self.psar.lines.psar[0] - self.params.slippage)
-                self.sell_order_canceled = False
-                self.log('Raised stop limit sell from {} to {} with ref {}'.format(
-                    prev_sell_order_price,
-                    self.psar.lines.psar[0],
-                    self.sell_order.ref)
+                                            plimit=self.psar.lines.psar[0] - self.params.slippage)
+                self.log(
+                    f'Order #{self.sell_order.ref} submitting stop limit sell raise '
+                    f'from {round(prev_sell_order_price, 4)} to {round(self.psar.lines.psar[0], 4)}'
                 )
+                self.sell_order_canceled = False
 
     def notify_trade(self, trade, *args, **kwargs):
+        self.log(f'Trade #{trade.ref} {trade.status_names[trade.status]}')
         if self.buy_order.ref == trade.ref and trade.long:
             if trade.isopen:  # opened long trade
                 self.bought = True
@@ -76,7 +75,7 @@ class TrailingStopLossV2(Strategy):
                                             plimit=self.params.fallback_stop_loss - self.params.slippage)
             elif trade.isclosed:
                 self.log('Trade closed. Hit p_sl ({}). Sold at: {}.'.format(
-                    self.psar.lines.psar[0], trade.price
+                    self.sell_order.price, self.sell_order.plimit
                 ))
                 self.sigstop()
 
