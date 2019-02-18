@@ -18,7 +18,7 @@ class _SarStatus(object):
 
 
 class ParabolicSL(PeriodN):
-    '''
+    """
     Parabolic Stop Loss
 
     This is a Parabolic SAR indicator that can be initialized after a buy or sell order
@@ -36,7 +36,7 @@ class ParabolicSL(PeriodN):
     See:
       - https://en.wikipedia.org/wiki/Parabolic_SAR
       - http://stockcharts.com/school/doku.php?id=chart_school:technical_indicators:parabolic_sar
-    '''
+    """
     alias = ('PSAR',)
     lines = ('psar',)
     params = (
@@ -106,12 +106,13 @@ class ParabolicSL(PeriodN):
 
         # The low of the current candle
         lo = self.data.low[0]
+        self.log(f'PSAR High: {hi} Low: {lo}')
 
         plenidx = (len(self) - 1) % 2  # previous length index (0 or 1)
         status = self._status[plenidx]  # use prev status for calculations
 
         # as soon as the buy order has been triggered there is a position size
-        size = self.p.position.size
+        size = self._owner.position.size
         inPositionOnExchange = size > 0
 
         # status.inPosition signals if the psar algorithm assumes to be in a position (psar below market price)
@@ -127,7 +128,7 @@ class ParabolicSL(PeriodN):
             tr = True if justBought else tr
             # new sar is prev SIP (Significant price)
             # take the previous extreme point or the fallback stop loss if it's lower and I just bought
-            justBoughtAndFallbackIsLower = justBought and  self.p.fallback_stop_loss < status.ep
+            justBoughtAndFallbackIsLower = justBought and self.p.fallback_stop_loss < status.ep
             sar = self.p.fallback_stop_loss if justBoughtAndFallbackIsLower else status.ep
             ep = hi if tr else lo  # select new SIP / Extreme Price
             print('Trend switched. Sar: {} (fbsl: {}, prev. ep: {})'.format(sar, self.p.fallback_stop_loss, status.ep))
@@ -179,3 +180,11 @@ class ParabolicSL(PeriodN):
         newstatus.ep = ep
         newstatus.af = af
         newstatus.inPosition = size > 0
+
+    def log(self, txt, dt=None):
+        """ Logging function for this strategy"""
+        try:
+            dt = dt or self.datas[0].datetime.datetime(0)
+            print('%s, %s' % (dt.isoformat(), txt))
+        except IndexError:
+            print('%s' % txt)
