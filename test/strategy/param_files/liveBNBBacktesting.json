@@ -2,11 +2,11 @@
   "comments": [
     "Removed the 'fromdate' parameter to configure live 'backtesting'"
   ],
-  "initial_cash": 20,
-  "buy_pos_size": 2,
+  "initial_cash": 15,
+  "buy_pos_size": 1.5,
   "slippage": 0.1,
-  "buy_limit": 7.915,
-  "fallback_stop_loss": 7.8998,
+  "buy_limit": 8.9756,
+  "fallback_stop_loss": 8.9639,
   "exchange": "binance",
   "symbol": "BNB/USDT",
   "timeframe": "minutes",
