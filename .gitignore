@@ -19,3 +19,4 @@ env
 
 # Some generated files
 test/strategy/generated/**
+test/serialization/generated/state/*.json

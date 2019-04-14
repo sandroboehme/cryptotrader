@@ -1,12 +1,30 @@
+from abc import abstractmethod
+
 from backtrader.indicators import PeriodN
 
+from cryptotrader.serialization.serializable import JsonSerializable
 
-class _SarStatus(object):
+
+class _SarStatus(JsonSerializable):
     sar = None
-    tr = None
-    af = 0.0
-    ep = 0.0
-    inPosition = False
+    tr = None # trend
+    af = 0.0 # acceleration factor
+    ep = 0.0 # extreme price
+
+    def serialize_json(self):
+        return {
+            'sar': self.sar,
+            'tr': self.tr,
+            'af': self.af,
+            'ep': self.ep
+        }
+
+    def deserialize_json(self, json):
+        self.sar = json['sar']
+        self.tr = json['tr']
+        self.af = json['af']
+        self.ep = json['ep']
+        return self
 
     def __str__(self):
         txt = []
@@ -17,7 +35,7 @@ class _SarStatus(object):
         return '\n'.join(txt)
 
 
-class ParabolicSL(PeriodN):
+class ParabolicSLv2(PeriodN, JsonSerializable):
     """
     Parabolic Stop Loss
 
@@ -43,8 +61,8 @@ class ParabolicSL(PeriodN):
         ('position', None),
         ('fallback_stop_loss', None),
         ('period', 2),  # when to start showing values
-        ('af', 0.02),
-        ('afmax', 0.20),
+        ('af', 0.02), # acceleration factor
+        ('afmax', 0.20), # acceleration factor max value
     )
 
     plotinfo = dict(subplot=False)
@@ -53,6 +71,19 @@ class ParabolicSL(PeriodN):
             marker='.', markersize=4.0, color='black', fillstyle='full', ls=''
         ),
     )
+
+    def serialize_json(self):
+        return {
+            '_status': [
+                self._status[0].serialize_json(),
+                self._status[1].serialize_json()
+            ]
+        }
+
+    def deserialize_json(self, json):
+        self._status = []
+        self._status.append(_SarStatus().deserialize_json(json['_status'][0]))
+        self._status.append(_SarStatus().deserialize_json(json['_status'][1]))
 
     def prenext(self):
         if len(self) == 1:
@@ -112,7 +143,7 @@ class ParabolicSL(PeriodN):
         status = self._status[plenidx]  # use prev status for calculations
 
         # as soon as the buy order has been triggered there is a position size
-        size = self._owner.position.size
+        size = 0 #if not self._owner.position else self._owner.position.size
         inPositionOnExchange = size > 0
 
         # status.inPosition signals if the psar algorithm assumes to be in a position (psar below market price)

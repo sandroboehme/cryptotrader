@@ -1,0 +1,32 @@
+{
+  "info": {
+    "symbol": "BNBUSDT",
+    "orderId": 87813927,
+    "clientOrderId": "Anj8qjYfBQqSx11oJ8IoCw",
+    "transactTime": 1548655200000,
+    "price": "6.48260000",
+    "origQty": "10.00000000",
+    "executedQty": "0.00000000",
+    "cummulativeQuoteQty": "0.00000000",
+    "status": "NEW",
+    "timeInForce": "GTC",
+    "type": "LIMIT",
+    "side": "BUY"
+  },
+  "id": "87813927",
+  "timestamp": 1548655200000,
+  "datetime": "2019-01-28T06:00:00.000Z",
+  "lastTradeTimestamp": null,
+  "symbol": "BNB/USDT",
+  "type": "limit",
+  "side": "buy",
+  "price": 6.48,
+  "amount": 10.0,
+  "cost": 0.0,
+  "average": null,
+  "filled": 0.0,
+  "remaining": 10.0,
+  "status": "open",
+  "fee": null,
+  "trades": null
+}

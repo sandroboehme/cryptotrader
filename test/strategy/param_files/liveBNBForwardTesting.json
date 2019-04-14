@@ -1,0 +1,17 @@
+{
+  "comments": [
+    "Removed the 'fromdate' parameter to configure live forward testing"
+  ],
+  "initial_cash": 50,
+  "buy_pos_size": 1.5,
+  "slippage": 0.1,
+  "buy_limit": 15.08,
+  "fallback_stop_loss": 15.04,
+  "exchange": "binance",
+  "symbol": "BNB/USDT",
+  "timeframe": "minutes",
+  "compression": 1,
+  "currency": "BNB",
+  "data_status4trading": "LIVE",
+  "chartFileName": "../generated/bnb-usdt-1m-live.png"
+}

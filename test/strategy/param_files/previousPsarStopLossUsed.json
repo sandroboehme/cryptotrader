@@ -10,7 +10,7 @@
   "buy_pos_size": 10,
   "slippage": 0.1,
   "buy_limit": 6.48,
-  "fallback_stop_loss": 6.41,
+  "fallback_stop_loss": 16.41,
   "exchange": "binance",
   "symbol": "BNB/USDT",
   "timeframe": "minutes",

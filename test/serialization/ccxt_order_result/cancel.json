@@ -1,0 +1,32 @@
+{
+  "info": {
+    "symbol": "BNBUSDT",
+    "origClientOrderId": "jRnduKQu8EbEswCoFOWg77",
+    "orderId": 87826253,
+    "clientOrderId": "qThqOVTuVjM5yzcnTBV3xQ",
+    "price": "5.43260000",
+    "origQty": "10.00000000",
+    "executedQty": "0.00000000",
+    "cummulativeQuoteQty": "0.00000000",
+    "status": "CANCELED",
+    "timeInForce": "GTC",
+    "type": "STOP_LOSS_LIMIT",
+    "side": "SELL"
+  },
+  "id": "87826253",
+  "timestamp": null,
+  "datetime": null,
+  "lastTradeTimestamp": null,
+  "symbol": "BNB/USDT",
+  "type": "STOP_LOSS_LIMIT",
+  "side": "SELL",
+  "price": 5.4326,
+  "amount": 10.0,
+  "cost": 0.0,
+  "average": null,
+  "filled": 0.0,
+  "remaining": 10.0,
+  "status": "canceled",
+  "fee": null,
+  "trades": null
+}
