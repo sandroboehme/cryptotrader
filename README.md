@@ -1,7 +1,7 @@
 # cryptotrader
 This project is work in progress.
 
-The goal is to run pluggable trading strategies in the cloud. The first milestore will be a non pluggable trailing stop-loss strategy that can be run after a long trade at Binance.
+The goal is to run pluggable trading strategies in the cloud. An example of such a strategy is the trailing stop-loss strategy implemented here that can be run after a long trade at Binance.
 
 The ParabolicSL used in the code is an adapted ParabolicSAR that can start with a custom initial stop-loss depending on the TA of the individual long trade.
 
