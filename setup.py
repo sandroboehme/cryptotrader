@@ -5,6 +5,7 @@ setup(
     version='0.0.1',
     packages=['cryptotrader',
               'cryptotrader.strategy',
+              'cryptotrader.serialization',
               'cryptotrader.indicator'
               ],
     url='https://github.com/sandroboehme/cryptotrader',

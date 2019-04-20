@@ -29,7 +29,7 @@ class RestorableStrategy(Strategy):
             prev_data = json.load(f)
         prev_data['event_stop'] = True
         with open(self.params.abs_param_file, 'w') as outfile:
-            json.dump(prev_data, outfile)
+            json.dump(prev_data, outfile, indent=4)
         self.serialize()
 
     def deserialize(self):

@@ -13,5 +13,9 @@
   "compression": 1,
   "currency": "BNB",
   "data_status4trading": "LIVE",
-  "chartFileName": "../generated/bnb-usdt-1m-live.png"
+  "chartFileName": "../generated/bnb-usdt-1m-live.png",
+  "candle_state": {
+    "type": "fs",
+    "path": ""
+  }
 }

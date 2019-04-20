@@ -1,14 +1,29 @@
 import json
 import os
 import time
+import datetime as dt
 
 import backtrader as bt
 import sys
 
 from ccxtbt import CCXTStore
 from cryptotrader.CTCerebro import CTCerebro
-from cryptotrader.strategy.trailing_stop_loss_v2 import TrailingStopLossV2
+from cryptotrader.strategy.trailing_stop_loss_v3 import TrailingStopLossV3
 from definitions import ROOT_PATH, CONFIG_PATH
+
+
+def get_candle_state_index(trade_setup):
+    candle_state_path = trade_setup['candle_state']['path']
+
+    if len(os.listdir(candle_state_path)) == 0:
+        candle_state_index = -1
+    else:
+        files = os.listdir(candle_state_path)
+        candle_state_index = max(map(
+            lambda file: int(file.split('.')[0]),
+            files)
+        )
+    return candle_state_index + 1
 
 
 def main(arguments):
@@ -18,29 +33,38 @@ def main(arguments):
     cerebro = CTCerebro(preload=False)
 
     try:
-        rel_param_file = arguments[0]
+        trade_setup_file_or_dict = arguments[0]
     except:
         print('Please provide the parameter file name.')
         sys.exit(1)  # abort
-    abs_param_file = os.path.join(ROOT_PATH, rel_param_file)
-    with open(abs_param_file, 'r') as f:
-        ideaParams = json.load(f)
 
-    cerebro.broker.setcash(ideaParams['initial_cash'])
+    if type(trade_setup_file_or_dict) is dict:
+        trade_setup = trade_setup_file_or_dict
+    else:
+        abs_param_file = os.path.join(ROOT_PATH, trade_setup_file_or_dict)
+        with open(abs_param_file, 'r') as f:
+            trade_setup = json.load(f)
 
-    cerebro.addstrategy(TrailingStopLossV2,
-                        buy_pos_size=ideaParams['buy_pos_size'],
-                        slippage=ideaParams['slippage'],
-                        buy_limit=ideaParams['buy_limit'],
-                        fallback_stop_loss=ideaParams['fallback_stop_loss'],
-                        data_status4trading=ideaParams.get('data_status4trading'),
+    cerebro.broker.setcash(trade_setup['initial_cash'])
+
+    abs_param_file = os.path.join(ROOT_PATH, 'trade_setups/backtestBNBPsarSL.json')
+    cerebro.addstrategy(TrailingStopLossV3,
+                        buy_pos_size=trade_setup['buy_pos_size'],
+                        slippage=trade_setup['slippage'],
+                        buy_limit=trade_setup['buy_limit'],
+                        fallback_stop_loss=trade_setup['fallback_stop_loss'],
+                        data_status4trading=trade_setup.get('data_status4trading'),
+                        state_folder_path=trade_setup['candle_state']['path'],
+                        state_iteration_index=get_candle_state_index(trade_setup),
+                        # state_bucket_folder=...
+                        abs_param_file=abs_param_file
                         )
 
     with open(CONFIG_PATH, 'r') as f:
-        params = json.load(f)
+        runtime_config = json.load(f)
 
-    config = {'apiKey': params["keys"]["binance"]["apikey"],
-              'secret': params["keys"]["binance"]["secret"],
+    store_config = {'apiKey': runtime_config["keys"]["binance"]["apikey"],
+              'secret': runtime_config["keys"]["binance"]["secret"],
               'enableRateLimit': True,
               'nonce': lambda: str(int(time.time() * 1000)),
               }
@@ -55,48 +79,35 @@ def main(arguments):
         monthly=bt.TimeFrame.Months)
 
     store = CCXTStore(
-        exchange=ideaParams['exchange'],
-        currency=ideaParams['currency'],
-        config=config,
+        exchange=trade_setup['exchange'],
+        currency=trade_setup['currency'],
+        config=store_config,
         retries=5,
         debug=True)
 
-    # Get the broker and pass any kwargs if needed.
-    # ----------------------------------------------
-    # Broker mappings have been added since some exchanges expect different values
-    # to the defaults. Case in point, Kraken vs Bitmex. NOTE: Broker mappings are not
-    # required if the broker uses the same values as the defaults in CCXTBroker.
-    broker_mapping = {
-        'order_types': {
-            bt.Order.Market: 'market',
-            bt.Order.Limit: 'limit',
-            bt.Order.Stop: 'stop-loss',  # stop-loss for kraken, stop for bitmex
-            bt.Order.StopLimit: 'STOP_LOSS_LIMIT'
-        },
-        'mappings': {
-            'closed_order': {
-                'key': 'status',
-                'value': 'closed'
-            },
-            'canceled_order': {
-                'key': 'status',
-                'value': 'canceled'}
-        }
-    }
-
-    broker = store.getbroker(broker_mapping=broker_mapping)
+    broker = store.getbroker()
     cerebro.setbroker(broker)
+
+    if trade_setup.get('fromdate'):
+        fromdate = dt.datetime(
+            trade_setup['fromdate']['year'],
+            trade_setup['fromdate']['month'],
+            trade_setup['fromdate']['day'],
+            trade_setup['fromdate']['hour'],
+            trade_setup['fromdate']['minute'])
+    else:
+        fromdate = None
 
     # Get our data
     # Drop newest will prevent us from loading partial data from incomplete candles
-    data = store.getdata(exchange=ideaParams['exchange'],
-                         dataname=ideaParams['symbol'],
-                         timeframe=tframes[ideaParams['timeframe']],
-                         fromdate=None,
-                         compression=ideaParams['compression'],
+    data = store.getdata(exchange=trade_setup['exchange'],
+                         dataname=trade_setup['symbol'],
+                         timeframe=tframes[trade_setup['timeframe']],
+                         fromdate=fromdate,
+                         compression=trade_setup['compression'],
                          ohlcv_limit=2,  # required to make calls to binance exchange work
-                         currency=ideaParams['currency'],
-                         config=config,
+                         currency=trade_setup['currency'],
+                         config=store_config,
                          retries=5,
                          drop_newest=False,
                          # historical=True,
@@ -116,8 +127,8 @@ def main(arguments):
     # Print out the final result
     print('Final Portfolio Value: %.2f' % cerebro.broker.getvalue())
 
-    abs_chart_file_path = os.path.join(os.path.dirname(abs_param_file), ideaParams['chartFileName'])
-    cerebro.plotToFile(style='candlestick', path=abs_chart_file_path)
+    # abs_chart_file_path = os.path.join(os.path.dirname(abs_param_file), trade_setup['chartFileName'])
+    # cerebro.plotToFile(style='candlestick', path=abs_chart_file_path)
 
 
 if __name__ == '__main__':

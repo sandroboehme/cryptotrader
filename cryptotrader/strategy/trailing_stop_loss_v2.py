@@ -1,6 +1,8 @@
 from backtrader import Order, Strategy
 from ccxt import InvalidOrder
 
+from cryptotrader.indicator.ParabolicSLv2 import ParabolicSLv2
+
 
 class TrailingStopLossV2(Strategy):
     params = (
@@ -16,8 +18,7 @@ class TrailingStopLossV2(Strategy):
         self.buy_order = None
         self.sell_order = None
         self.finished = False
-        from cryptotrader.indicator.ParabolicSL import ParabolicSL
-        self.psar = ParabolicSL(self.datas[0], position=self.position,
+        self.psar = ParabolicSLv2(self.datas[0], position=self.position,
                                 fallback_stop_loss=self.params.fallback_stop_loss)
         self.params.data_status4trading = 'DELAYED' if not self.params.data_status4trading \
             else self.params.data_status4trading

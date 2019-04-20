@@ -20,3 +20,4 @@ env
 # Some generated files
 test/strategy/generated/**
 test/serialization/generated/state/*.json
+trade_setups/generated/state/*.json

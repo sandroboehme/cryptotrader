@@ -4,8 +4,12 @@ import unittest
 from unittest import mock
 from unittest.mock import patch, MagicMock
 
+import datetime as dt
+
+import backtrader as bt
 import ccxt
 
+import livetrading
 from test.serialization import testing_with_live_exchange
 from definitions import ROOT_PATH
 
@@ -80,8 +84,7 @@ class TestTrailingStopLossRestore(unittest.TestCase):
                 return cancel_order_result
             return None
 
-        rel_param_file = self.param_file_path_prefix + 'previousPsarStopLossUsed.json'
-        abs_param_file = os.path.join(ROOT_PATH, rel_param_file)
+        abs_param_file = os.path.join(ROOT_PATH, 'trade_setups/backtestBNBPsarSL.json')
         self.restart_trade(abs_param_file)
 
         with mock.patch.object(ccxt.binance, 'cancel_order', side_effect=binance_cancel_order):
@@ -93,16 +96,21 @@ class TestTrailingStopLossRestore(unittest.TestCase):
                         last_iteration = iteration
                         iteration = iteration_index
 
-                        testing_with_live_exchange.main([rel_param_file, iteration_index])
+                        trade_setup = self.set_fromdate_for_iteration(
+                            abs_param_file,
+                            iteration_index)
+
+                        trade_setup['candle_state']['path'] = os.path.join(os.path.dirname(abs_param_file), 'generated/state/')
+
+                        livetrading.main([trade_setup])
 
                         with open(abs_param_file, 'r') as f:
-                            ideaParams = json.load(f)
-                            finished = ideaParams.get('event_stop')
+                            finished = json.load(f).get('event_stop')
 
                         assert iteration <= 20
-                        rel_trade_state_file = self.param_file_path_prefix + 'generated/state/' + str(iteration) + '.json'
-                        abs_trade_state_file = os.path.join(ROOT_PATH, rel_trade_state_file)
-                        with open(abs_trade_state_file, 'r') as f:
+                        abs_candle_state_file = trade_setup['candle_state']['path'] + str(iteration) + '.json'
+
+                        with open(abs_candle_state_file, 'r') as f:
                             trade_state = json.load(f)
                             if iteration == 0:
                                 assert trade_state.get('ohlc') == {
@@ -183,6 +191,29 @@ class TestTrailingStopLossRestore(unittest.TestCase):
                                 assert so["amount"] == 10.0
 
                         iteration_index += 1
+
+    def set_fromdate_for_iteration(self, abs_param_file, iteration_index):
+        with open(abs_param_file, 'r') as f:
+            trade_setup = json.load(f)
+        fromdate = dt.datetime(
+            trade_setup['fromdate']['year'],
+            trade_setup['fromdate']['month'],
+            trade_setup['fromdate']['day'],
+            trade_setup['fromdate']['hour'],
+            trade_setup['fromdate']['minute'])
+        # This moves the fromdate forward depending on the timeframe and
+        # how many iterations have been passed already.
+        # e.g. for the 5th iteration of 15min timeframes: {'minutes': 5 * 15}
+        fromdate = fromdate + bt.datetime.timedelta(**{
+            trade_setup['timeframe']: iteration_index * trade_setup['compression']
+        })
+        ts_from = trade_setup['fromdate']
+        ts_from['year'] = fromdate.year
+        ts_from['month'] = fromdate.month
+        ts_from['day'] = fromdate.day
+        ts_from['hour'] = fromdate.hour
+        ts_from['minute'] = fromdate.minute
+        return trade_setup
 
     def restart_trade(self, abs_param_file):
         with open(abs_param_file, 'r') as f:
