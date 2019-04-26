@@ -10,7 +10,7 @@ import backtrader as bt
 import ccxt
 
 import livetrading
-from test.serialization import testing_with_live_exchange
+
 from definitions import ROOT_PATH
 
 
