@@ -22,3 +22,4 @@ test/strategy/generated/**
 test/serialization/generated/state/*.json
 trade_setups/generated/state/*.json
 auth.json
+candle_states

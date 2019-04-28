@@ -1,4 +1,5 @@
 {
+    "name": "trailing_sl",
     "comments": [
         "Produces a case where there is actually a stop loss from the psar",
         "as the prices where low enough in the previous cycle.",
@@ -24,10 +25,7 @@
         "minute": 30
     },
     "data_status4trading": "LIVE",
-    "candle_state": {
-        "type": "fs",
-        "path": ""
-    },
+    "candle_state_persistence_type": "fs",
     "chartFileName": "../generated/bnb-usdt-15m-prev-psar-sl.png",
     "event_stop": true
 }

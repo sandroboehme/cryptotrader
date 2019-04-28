@@ -2,7 +2,6 @@ import json
 import os
 import unittest
 from unittest import mock
-from unittest.mock import patch, MagicMock
 
 import datetime as dt
 
@@ -10,6 +9,8 @@ import backtrader as bt
 import ccxt
 
 import livetrading
+from cryptotrader.persistence.cs_persistence_factory import CSPersistenceFactory
+from cryptotrader.persistence.persistence_type import PersistenceType
 
 from definitions import ROOT_PATH
 
@@ -20,14 +21,20 @@ class TestTrailingStopLossRestore(unittest.TestCase):
         self.param_file_path_prefix = 'test/serialization/'
         self.test_folder_prefix = os.path.join(ROOT_PATH, 'test/serialization/')
 
-    def test_previousPsarStopLossUsed(self):
+    def test_previousPsarStopLoss_fs(self):
+        self.previousPsarStopLossUsed_test(PersistenceType.FS)
+
+    def test_previousPsarStopLossUsed_gcloud_storage(self):
+        self.previousPsarStopLossUsed_test(PersistenceType.GOOGLE_CLOUD_STORAGE)
+
+    def previousPsarStopLossUsed_test(self, persistence_type):
         iteration = 0
         call_count = 0
         last_iteration = 0
         last_stop_price = None
+
         with open(self.test_folder_prefix + 'ccxt_order_result/limit/limit_buy.json', 'r') as f:
             buy_order_result = json.load(f)
-            # binance_create_order_mock.return_value = buy_order_result
 
         with open(self.test_folder_prefix + 'ccxt_order_result/limit/limit_buy_fetch_order.json', 'r') as f:
             limit_buy_fetch_order_result = json.load(f)
@@ -85,7 +92,7 @@ class TestTrailingStopLossRestore(unittest.TestCase):
             return None
 
         abs_param_file = os.path.join(ROOT_PATH, 'trade_setups/backtestBNBPsarSL.json')
-        self.restart_trade(abs_param_file)
+        cs_persistence = self.initialize_test_data(abs_param_file, persistence_type)
 
         with mock.patch.object(ccxt.binance, 'cancel_order', side_effect=binance_cancel_order):
             with mock.patch.object(ccxt.binance, 'create_order', side_effect=binance_create_order):
@@ -100,95 +107,92 @@ class TestTrailingStopLossRestore(unittest.TestCase):
                             abs_param_file,
                             iteration_index)
 
-                        trade_setup['candle_state']['path'] = os.path.join(os.path.dirname(abs_param_file), 'generated/state/')
+                        trade_setup['candle_state_persistence_type'] = persistence_type.value
 
                         livetrading.main([trade_setup])
 
                         with open(abs_param_file, 'r') as f:
                             finished = json.load(f).get('event_stop')
 
-                        assert iteration <= 20
-                        abs_candle_state_file = trade_setup['candle_state']['path'] + str(iteration) + '.json'
-
-                        with open(abs_candle_state_file, 'r') as f:
-                            trade_state = json.load(f)
-                            if iteration == 0:
-                                assert trade_state.get('ohlc') == {
-                                    "open": 6.7299,
-                                    "high": 6.7299,
-                                    "low": 6.681,
-                                    "close": 6.681,
-                                    "volume": 35286.44
-                                }, 'The testing environment didn\'t return the correct ohlc value.'
-                                assert trade_state.get('time') == '2019-01-28T04:15:00'
-                                assert trade_state.get('psar') == 6.907896
-                                assert trade_state.get('buy_order') is not None
-                                assert trade_state.get('sar') is not None
-                                assert trade_state.get('sell_order') is None
-                            elif iteration == 1:
-                                assert trade_state.get('ohlc') == {
-                                    "open": 6.6872,
-                                    "high": 6.6872,
-                                    "low": 6.665,
-                                    "close": 6.6703,
-                                    "volume": 29960.3
-                                }, 'The testing environment didn\'t return the correct ohlc value.'
-                                assert trade_state.get('time') == '2019-01-28T04:30:00'
-                                assert trade_state.get('psar') == 6.8814853056
-                                assert trade_state.get('buy_order') is not None
-                                assert trade_state.get('sar') is not None
-                                assert trade_state.get('sell_order') is None
-                            elif iteration == 7:
-                                assert trade_state.get('ohlc') == {
-                                    "open": 6.5028,
-                                    "high": 6.5184,
-                                    "low": 6.3723,
-                                    "close": 6.4399,
-                                    "volume": 138693.53
-                                }, 'The testing environment didn\'t return the correct ohlc value.'
-                                assert trade_state.get('time') == '2019-01-28T06:00:00'
-                                assert trade_state.get('psar') == 6.63879136
-                                assert trade_state.get('buy_order') is not None
-                                assert trade_state.get('sar') is not None
-                                assert trade_state.get('sell_order') is None
-                            elif iteration == 8:
-                                assert trade_state.get('ohlc') == {
-                                    "open": 6.4399,
-                                    "high": 6.5562,
-                                    "low": 6.426,
-                                    "close": 6.5147,
-                                    "volume": 49548.23
-                                }, 'The testing environment didn\'t return the correct ohlc value.'
-                                assert trade_state.get('time') == '2019-01-28T06:15:00'
-                                assert trade_state.get('psar') == 6.5787
-                                assert trade_state.get('buy_order') is not None
-                                assert trade_state.get('sar') is not None
-                                so = trade_state.get('sell_order')
-                                assert so is not None
-                                assert so["symbol"] == 'BNB/USDT'
-                                assert so["type"] == 'stop_loss_limit'
-                                assert so["side"] == 'sell'
-                                assert so["price"] == 6.3100000000000005
-                                assert so["amount"] == 10.0
-                            elif iteration == 19:
-                                assert trade_state.get('ohlc') == {
-                                    "open": 6.6506,
-                                    "high": 6.6509,
-                                    "low": 6.6244,
-                                    "close": 6.6456,
-                                    "volume": 16550.96
-                                }, 'The testing environment didn\'t return the correct ohlc value.'
-                                assert trade_state.get('time') == '2019-01-28T09:00:00'
-                                assert trade_state.get('psar') == 6.77766888
-                                assert trade_state.get('buy_order') is not None
-                                assert trade_state.get('sar') is not None
-                                so = trade_state.get('sell_order')
-                                assert so is not None
-                                assert so["symbol"] == 'BNB/USDT'
-                                assert so["type"] == 'stop_loss_limit'
-                                assert so["side"] == 'sell'
-                                assert so["price"] == 6.680456
-                                assert so["amount"] == 10.0
+                        assert iteration <= 21
+                        candle_state, path = cs_persistence.get_last_candle_state()
+                        if iteration == 0:
+                            assert candle_state.get('ohlc') == {
+                                "open": 6.7299,
+                                "high": 6.7299,
+                                "low": 6.681,
+                                "close": 6.681,
+                                "volume": 35286.44
+                            }, 'The testing environment didn\'t return the correct ohlc value.'
+                            assert candle_state.get('time') == '2019-01-28T04:15:00'
+                            assert candle_state.get('psar') == 6.907896
+                            assert candle_state.get('buy_order') is not None
+                            assert candle_state.get('sar') is not None
+                            assert candle_state.get('sell_order') is None
+                        elif iteration == 1:
+                            assert candle_state.get('ohlc') == {
+                                "open": 6.6872,
+                                "high": 6.6872,
+                                "low": 6.665,
+                                "close": 6.6703,
+                                "volume": 29960.3
+                            }, 'The testing environment didn\'t return the correct ohlc value.'
+                            assert candle_state.get('time') == '2019-01-28T04:30:00'
+                            assert candle_state.get('psar') == 6.8814853056
+                            assert candle_state.get('buy_order') is not None
+                            assert candle_state.get('sar') is not None
+                            assert candle_state.get('sell_order') is None
+                        elif iteration == 7:
+                            assert candle_state.get('ohlc') == {
+                                "open": 6.5028,
+                                "high": 6.5184,
+                                "low": 6.3723,
+                                "close": 6.4399,
+                                "volume": 138693.53
+                            }, 'The testing environment didn\'t return the correct ohlc value.'
+                            assert candle_state.get('time') == '2019-01-28T06:00:00'
+                            assert candle_state.get('psar') == 6.63879136
+                            assert candle_state.get('buy_order') is not None
+                            assert candle_state.get('sar') is not None
+                            assert candle_state.get('sell_order') is None
+                        elif iteration == 8:
+                            assert candle_state.get('ohlc') == {
+                                "open": 6.4399,
+                                "high": 6.5562,
+                                "low": 6.426,
+                                "close": 6.5147,
+                                "volume": 49548.23
+                            }, 'The testing environment didn\'t return the correct ohlc value.'
+                            assert candle_state.get('time') == '2019-01-28T06:15:00'
+                            assert candle_state.get('psar') == 6.5787
+                            assert candle_state.get('buy_order') is not None
+                            assert candle_state.get('sar') is not None
+                            so = candle_state.get('sell_order')
+                            assert so is not None
+                            assert so["symbol"] == 'BNB/USDT'
+                            assert so["type"] == 'stop_loss_limit'
+                            assert so["side"] == 'sell'
+                            assert so["price"] == 6.3100000000000005
+                            assert so["amount"] == 10.0
+                        elif iteration == 19:
+                            assert candle_state.get('ohlc') == {
+                                "open": 6.6506,
+                                "high": 6.6509,
+                                "low": 6.6244,
+                                "close": 6.6456,
+                                "volume": 16550.96
+                            }, 'The testing environment didn\'t return the correct ohlc value.'
+                            assert candle_state.get('time') == '2019-01-28T09:00:00'
+                            assert candle_state.get('psar') == 6.77766888
+                            assert candle_state.get('buy_order') is not None
+                            assert candle_state.get('sar') is not None
+                            so = candle_state.get('sell_order')
+                            assert so is not None
+                            assert so["symbol"] == 'BNB/USDT'
+                            assert so["type"] == 'stop_loss_limit'
+                            assert so["side"] == 'sell'
+                            assert so["price"] == 6.680456
+                            assert so["amount"] == 10.0
 
                         iteration_index += 1
 
@@ -215,12 +219,24 @@ class TestTrailingStopLossRestore(unittest.TestCase):
         ts_from['minute'] = fromdate.minute
         return trade_setup
 
-    def restart_trade(self, abs_param_file):
+    def initialize_test_data(self, abs_param_file, persistence_type):
         with open(abs_param_file, 'r') as f:
             prev_data = json.load(f)
         prev_data['event_stop'] = False
         with open(abs_param_file, 'w') as outfile:
-            json.dump(prev_data, outfile)
+            json.dump(prev_data, outfile, indent=4)
+
+        trade_parameter = dict(exchange=prev_data['exchange'],
+                               pair=prev_data['symbol'],
+                               year=prev_data['fromdate']['year'],
+                               month=prev_data['fromdate']['month'],
+                               day=prev_data['fromdate']['day'],
+                               trade_id=prev_data['name'])
+        cs_persistence = CSPersistenceFactory.get_cs_persistance(persistence_type,
+                                                                 **trade_parameter,
+                                                                 root_path=ROOT_PATH)
+        cs_persistence.delete_trade_folder()
+        return cs_persistence
 
 
 if __name__ == '__main__':

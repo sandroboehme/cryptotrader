@@ -8,22 +8,27 @@ import sys
 
 from ccxtbt import CCXTStore
 from cryptotrader.CTCerebro import CTCerebro
+from cryptotrader.persistence.cs_persistence_factory import CSPersistenceFactory
+from cryptotrader.persistence.persistence_type import PersistenceType
 from cryptotrader.strategy.trailing_stop_loss_v3 import TrailingStopLossV3
 from definitions import ROOT_PATH, CONFIG_PATH
 
 
-def get_candle_state_index(trade_setup):
-    candle_state_path = trade_setup['candle_state']['path']
+def get_candle_state_index(cs_persistence):
+    last_file_id = cs_persistence.get_last_file_id()
+    return 0 if last_file_id is None else last_file_id
 
-    if len(os.listdir(candle_state_path)) == 0:
-        candle_state_index = -1
-    else:
-        files = os.listdir(candle_state_path)
-        candle_state_index = max(map(
-            lambda file: int(file.split('.')[0]),
-            files)
-        )
-    return candle_state_index + 1
+
+def get_cs_persistence(trade_setup):
+    persistence_type = PersistenceType(trade_setup['candle_state_persistence_type'])
+    trade_parameter = dict(exchange=trade_setup['exchange'],
+                           pair=trade_setup['symbol'],
+                           year=trade_setup['fromdate']['year'],
+                           month=trade_setup['fromdate']['month'],
+                           day=trade_setup['fromdate']['day'],
+                           trade_id=trade_setup['name'])
+    cs_persistence = CSPersistenceFactory.get_cs_persistance(persistence_type, **trade_parameter, root_path=ROOT_PATH)
+    return cs_persistence
 
 
 def main(arguments):
@@ -45,6 +50,8 @@ def main(arguments):
         with open(abs_param_file, 'r') as f:
             trade_setup = json.load(f)
 
+    cs_persistence = get_cs_persistence(trade_setup)
+
     cerebro.broker.setcash(trade_setup['initial_cash'])
 
     abs_param_file = os.path.join(ROOT_PATH, 'trade_setups/backtestBNBPsarSL.json')
@@ -54,8 +61,9 @@ def main(arguments):
                         buy_limit=trade_setup['buy_limit'],
                         fallback_stop_loss=trade_setup['fallback_stop_loss'],
                         data_status4trading=trade_setup.get('data_status4trading'),
-                        state_folder_path=trade_setup['candle_state']['path'],
-                        state_iteration_index=get_candle_state_index(trade_setup),
+                        candle_state_persistence_type=trade_setup['candle_state_persistence_type'],
+                        state_iteration_index=get_candle_state_index(cs_persistence),
+                        cs_persistence=cs_persistence,
                         # state_bucket_folder=...
                         abs_param_file=abs_param_file
                         )
