@@ -1,32 +1,24 @@
-import json
 from backtrader import Order, Strategy
-
-from cryptotrader.persistence.persistence_type import PersistenceType
 
 
 class RestorableStrategy(Strategy):
     activated = True
 
     params = (
-        ('candle_state_persistence_type', None),
         ('state_iteration_index', None),
         ('cs_persistence', None),
+        ('trade_setup_persistence', None),
         ('abs_param_file', None),
     )
 
     def __init__(self):
-        self.cs_persistence = PersistenceType(self.params.candle_state_persistence_type)
         self.live_next_run_already = False
         if self.activated and self.params.state_iteration_index > 0:
             self.setminperiod(0)
         self.data_status4trading = None
 
     def end_trade(self):
-        with open(self.params.abs_param_file, 'r') as f:
-            prev_data = json.load(f)
-        prev_data['event_stop'] = True
-        with open(self.params.abs_param_file, 'w') as outfile:
-            json.dump(prev_data, outfile, indent=4)
+        self.params.trade_setup_persistence.end_setup()
         self.serialize()
 
     def deserialize(self):

@@ -15,17 +15,23 @@ The ParabolicSL used in the code is an adapted ParabolicSAR that can start with 
 
 ## The workflow
 1. The frontend is planned to run on Firebase Hosting with Angular as the frontend framework. But it could potentially be any other frontend technology as long as it can work with Firestore.
-2. It is supposed to CRUD Trade Setup documents in Firestore. They contain data like the trading pair, the position size or the timeframe needed by the stop-loss strategy.
-3. The Timeframe iteration controller is a Google Cloud function. It is supposed to [run when Firestore documents have been added/changed](https://firebase.google.com/docs/functions/firestore-events). 
+2. It is supposed to CRUD trade setup documents in Firestore. They contain data like the trading pair, the position size or the timeframe needed by the stop-loss strategy.
+3. The timeframe iteration controller is a Google Cloud function. It is supposed to [run when Firestore documents have been added/changed](https://firebase.google.com/docs/functions/firestore-events). 
 E.g. if it identifies a new one it should configure a Google Cloud Scheduler to run the Cryptotrader runtime as a Google Cloud Function with the trailing stop-loss strategy depending on the timeframe in the trade setup as a cron job.
-4. In the specified timeframe intervals the Cryptotrader runtime will load the latest state of Strategy from the Google Cloud Storage, run the Strategy and store the new state in the Cloud Storage again for the next run to use. 
-The state is stored as a plain JSON file as the internal dict data structures are simple to read and write in that format compared to the custom Firestore data structure. This (de-)serialization logic has also been implemented for the local
-file system. It is tested in `TestTrailingStopLossRestore`.
+4. In the specified timeframe intervals the Cryptotrader runtime will load the latest candle state (psar status, order status) of the strategy from the Google Cloud Storage, run the Strategy and store the new state in the Cloud Storage again for the next run to use.
+It is tested in `TestTrailingStopLossRestore`.
 The strategy will also need to read the trade setup in Firestore to make the actual trades and it needs to change a property to instruct the Timeframe iteration controller to end the cron job. 
 
 ## Cryptotrader runtime
 It is based on great frameworks like [Backtrader](https://backtrader.com/docu), [CCXT](https://github.com/ccxt/ccxt), and Ed Bartosh's, Dave Vallance's and my work on [bt-ccxt-store](https://github.com/Dave-Vallance/bt-ccxt-store) which combines Backtrader and CCXT.
 
+## Persistence
+### Trade Setup
+It contains common things like the pair to trade and the exchange to use. But also strategy specifc data like stop-loss setup, buy price, position size and so on.
+The `PersistenceFactory` allows to persist the Trade Setups in the file system as well as in Firestore.
+### Candle State
+Candle state will be renamed to strategy state. It rather persist things like the status of the order(s), the status of indicators and every other state that needs to survive the restart of the runtime for each candle.
+The `PersistenceFactory` allows to persist Candle State in the file system as well as in the Google Cloud Storage. The support for the Google Cloud Storage will be replaced with Google Firestore.    
 ## Requirements
 Python 3
 

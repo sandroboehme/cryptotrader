@@ -3,3 +3,6 @@
 git+git://github.com/sandroboehme/bt-ccxt-store.git@develop#egg=bt_ccxt_store
 backtrader[plotting]
 google-cloud-storage
+google-cloud-firestore
+grpcio
+grpcio-tools

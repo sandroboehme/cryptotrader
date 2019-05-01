@@ -1,6 +1,5 @@
 import json
 import os
-from abc import ABC, abstractmethod
 
 from google.cloud import storage
 
@@ -17,7 +16,6 @@ class GCloudStorageCSPersistence(CSPersistence):
         CSPersistence.__init__(self, exchange, pair, year, month, day, trade_id)
         auth_file_path = os.path.join(ROOT_PATH, 'auth.json')
         os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = auth_file_path
-        # Instantiates a client
         self.storage_client = storage.Client()
 
     def get_last_file_id_by_folder(self, folder):

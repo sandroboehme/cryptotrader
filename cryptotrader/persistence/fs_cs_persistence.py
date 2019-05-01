@@ -1,9 +1,6 @@
 import json
 import os
 import shutil
-from abc import ABC, abstractmethod
-
-from google.cloud import storage
 
 from cryptotrader.persistence.cs_persistence import CSPersistence
 
@@ -17,7 +14,6 @@ class FSCSPersistence(CSPersistence):
     def __init__(self, exchange, pair, year, month, day, trade_id, root):
         CSPersistence.__init__(self, exchange, pair, year, month, day, trade_id)
         self.abs_cs_folder = os.path.join(root, FSCSPersistence.FOLDER_NAME_CANDLE_STATES)
-    pass
 
     def get_last_file_id_by_folder(self, folder):
         try:
@@ -42,7 +38,7 @@ class FSCSPersistence(CSPersistence):
         try:
             abs_file_path = os.path.join(abs_folder, str(next_file_id) + '.json')
             with open(abs_file_path, "w") as candle_state_file:
-                candle_state_file.write(json.dumps(candle_state))
+                candle_state_file.write(json.dumps(candle_state, indent=4))
         except OSError:
             print('Error creating file ' + abs_file_path)
         return abs_file_path

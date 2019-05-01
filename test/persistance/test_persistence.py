@@ -2,7 +2,10 @@ import json
 import os
 import unittest
 
-from cryptotrader.persistence.cs_persistence_factory import CSPersistenceFactory
+from cryptotrader.persistence.persistence import Persistence
+from cryptotrader.persistence.persistence_factory import PersistenceFactory
+from cryptotrader.persistence.filesystem_persistence import FilesystemPersistence
+from cryptotrader.persistence.firestore_persistence import FirestorePersistence
 from cryptotrader.persistence.persistence_type import PersistenceType
 from definitions import ROOT_PATH
 
@@ -10,7 +13,7 @@ from definitions import ROOT_PATH
 class TestPersistence(unittest.TestCase):
 
     def setUp(self):
-        abs_param_file = os.path.join(ROOT_PATH, 'trade_setups/backtestBNBPsarSL.json')
+        abs_param_file = os.path.join(ROOT_PATH, 'test/backtestBNBPsarSL.json')
         with open(abs_param_file, 'r') as f:
             trade_setup = json.load(f)
             self.trade_parameter = dict(exchange=trade_setup['exchange'],
@@ -19,6 +22,35 @@ class TestPersistence(unittest.TestCase):
                                         month=trade_setup['fromdate']['month'],
                                         day=trade_setup['fromdate']['day'],
                                         trade_id=trade_setup['name'])
+        self.trade_setup_path = Persistence.get_path('binance', 'bnb/usdt')
+
+    def test_trade_setup_filesystem_persistence(self):
+        persistence_imp = PersistenceFactory.get_persistance(PersistenceType.FS,
+                                                             self.trade_setup_path,
+                                                             name='backtestBNBPsarSL',
+                                                             root_path=ROOT_PATH)
+        self.trade_setup_persistence_test(persistence_imp)
+
+    def test_trade_setup_firestore_persistence(self):
+        persistence_imp = PersistenceFactory.get_persistance(PersistenceType.GOOGLE_FIRESTORE,
+                                                             self.trade_setup_path,
+                                                             name='backtestBNBPsarSL')
+        self.trade_setup_persistence_test(persistence_imp)
+
+    def trade_setup_persistence_test(self, persistence):
+        abs_param_file = os.path.join(ROOT_PATH, 'test/backtestBNBPsarSL.json')
+
+        persistence.delete_setup()
+
+        with open(abs_param_file, 'r') as f:
+            trade_setup = json.load(f)
+            trade_setup['event_stop'] = False
+            persistence.save_setup(trade_setup)
+            retrieved_setup = persistence.get_setup()
+            assert retrieved_setup == trade_setup
+            persistence.end_setup()
+            retrieved_setup = persistence.get_setup()
+            assert retrieved_setup['event_stop']
 
     def test_persistence_type_handling(self):
         assert 'fs' == PersistenceType.FS.value
@@ -27,13 +59,13 @@ class TestPersistence(unittest.TestCase):
         assert PersistenceType.GOOGLE_CLOUD_STORAGE == PersistenceType('google_cloud_storage')
 
     def test_file_system_persistence(self):
-        persistence_imp = CSPersistenceFactory.get_cs_persistance(PersistenceType.FS,
+        persistence_imp = PersistenceFactory.get_cs_persistance(PersistenceType.FS,
                                                                   **self.trade_parameter,
                                                                   root_path=ROOT_PATH)
         self.persistence_impl_test(persistence_imp)
 
     def test_gcloud_storage_persistence(self):
-        persistence_imp = CSPersistenceFactory.get_cs_persistance(PersistenceType.GOOGLE_CLOUD_STORAGE,
+        persistence_imp = PersistenceFactory.get_cs_persistance(PersistenceType.GOOGLE_CLOUD_STORAGE,
                                                                   **self.trade_parameter)
         self.persistence_impl_test(persistence_imp)
 

@@ -8,7 +8,7 @@ import sys
 
 from ccxtbt import CCXTStore
 from cryptotrader.CTCerebro import CTCerebro
-from cryptotrader.persistence.cs_persistence_factory import CSPersistenceFactory
+from cryptotrader.persistence.persistence_factory import PersistenceFactory
 from cryptotrader.persistence.persistence_type import PersistenceType
 from cryptotrader.strategy.trailing_stop_loss_v3 import TrailingStopLossV3
 from definitions import ROOT_PATH, CONFIG_PATH
@@ -27,28 +27,25 @@ def get_cs_persistence(trade_setup):
                            month=trade_setup['fromdate']['month'],
                            day=trade_setup['fromdate']['day'],
                            trade_id=trade_setup['name'])
-    cs_persistence = CSPersistenceFactory.get_cs_persistance(persistence_type, **trade_parameter, root_path=ROOT_PATH)
+    cs_persistence = PersistenceFactory.get_cs_persistance(persistence_type, **trade_parameter, root_path=ROOT_PATH)
     return cs_persistence
 
 
-def main(arguments):
+def main(path, name, persistence_type=PersistenceType.GOOGLE_FIRESTORE):
     """
     Please provide the parameter file name with a path relative to the project root.
     """
     cerebro = CTCerebro(preload=False)
 
     try:
-        trade_setup_file_or_dict = arguments[0]
+        trade_setup_persistence = PersistenceFactory.get_persistance(persistence_type,
+                                                                     path,
+                                                                     name,
+                                                                     root_path=ROOT_PATH)
+        trade_setup = trade_setup_persistence.get_setup()
     except:
         print('Please provide the parameter file name.')
         sys.exit(1)  # abort
-
-    if type(trade_setup_file_or_dict) is dict:
-        trade_setup = trade_setup_file_or_dict
-    else:
-        abs_param_file = os.path.join(ROOT_PATH, trade_setup_file_or_dict)
-        with open(abs_param_file, 'r') as f:
-            trade_setup = json.load(f)
 
     cs_persistence = get_cs_persistence(trade_setup)
 
@@ -61,9 +58,9 @@ def main(arguments):
                         buy_limit=trade_setup['buy_limit'],
                         fallback_stop_loss=trade_setup['fallback_stop_loss'],
                         data_status4trading=trade_setup.get('data_status4trading'),
-                        candle_state_persistence_type=trade_setup['candle_state_persistence_type'],
                         state_iteration_index=get_candle_state_index(cs_persistence),
                         cs_persistence=cs_persistence,
+                        trade_setup_persistence=trade_setup_persistence,
                         # state_bucket_folder=...
                         abs_param_file=abs_param_file
                         )
@@ -72,10 +69,10 @@ def main(arguments):
         runtime_config = json.load(f)
 
     store_config = {'apiKey': runtime_config["keys"]["binance"]["apikey"],
-              'secret': runtime_config["keys"]["binance"]["secret"],
-              'enableRateLimit': True,
-              'nonce': lambda: str(int(time.time() * 1000)),
-              }
+                    'secret': runtime_config["keys"]["binance"]["secret"],
+                    'enableRateLimit': True,
+                    'nonce': lambda: str(int(time.time() * 1000)),
+                    }
 
     tframes = dict(
         ticks=bt.TimeFrame.Ticks,

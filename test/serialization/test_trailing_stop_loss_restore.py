@@ -9,7 +9,8 @@ import backtrader as bt
 import ccxt
 
 import livetrading
-from cryptotrader.persistence.cs_persistence_factory import CSPersistenceFactory
+from cryptotrader.persistence.persistence import Persistence
+from cryptotrader.persistence.persistence_factory import PersistenceFactory
 from cryptotrader.persistence.persistence_type import PersistenceType
 
 from definitions import ROOT_PATH
@@ -22,12 +23,19 @@ class TestTrailingStopLossRestore(unittest.TestCase):
         self.test_folder_prefix = os.path.join(ROOT_PATH, 'test/serialization/')
 
     def test_previousPsarStopLoss_fs(self):
-        self.previousPsarStopLossUsed_test(PersistenceType.FS)
+        self.previousPsarStopLossUsed_test(PersistenceType.FS, PersistenceType.FS)
 
     def test_previousPsarStopLossUsed_gcloud_storage(self):
-        self.previousPsarStopLossUsed_test(PersistenceType.GOOGLE_CLOUD_STORAGE)
+        self.previousPsarStopLossUsed_test(PersistenceType.GOOGLE_CLOUD_STORAGE, PersistenceType.GOOGLE_FIRESTORE)
 
-    def previousPsarStopLossUsed_test(self, persistence_type):
+    def previousPsarStopLossUsed_test(self, persistence_type, trade_setup_persistence_type):
+        trade_setup_path = Persistence.get_path('binance', 'bnb/usdt')
+        setup_name = 'backtestBNBPsarSL'
+        trade_setup_persistence = PersistenceFactory.get_persistance(trade_setup_persistence_type,
+                                                                     trade_setup_path,
+                                                                     name=setup_name,
+                                                                     root_path=ROOT_PATH)
+
         iteration = 0
         call_count = 0
         last_iteration = 0
@@ -91,8 +99,9 @@ class TestTrailingStopLossRestore(unittest.TestCase):
                 return cancel_order_result
             return None
 
-        abs_param_file = os.path.join(ROOT_PATH, 'trade_setups/backtestBNBPsarSL.json')
-        cs_persistence = self.initialize_test_data(abs_param_file, persistence_type)
+        abs_param_file = os.path.join(ROOT_PATH, 'test/backtestBNBPsarSL.json')
+
+        cs_persistence = self.initialize_test_data(abs_param_file, persistence_type, trade_setup_persistence)
 
         with mock.patch.object(ccxt.binance, 'cancel_order', side_effect=binance_cancel_order):
             with mock.patch.object(ccxt.binance, 'create_order', side_effect=binance_create_order):
@@ -103,16 +112,10 @@ class TestTrailingStopLossRestore(unittest.TestCase):
                         last_iteration = iteration
                         iteration = iteration_index
 
-                        trade_setup = self.set_fromdate_for_iteration(
-                            abs_param_file,
-                            iteration_index)
+                        livetrading.main(trade_setup_path, setup_name, trade_setup_persistence_type)
 
-                        trade_setup['candle_state_persistence_type'] = persistence_type.value
-
-                        livetrading.main([trade_setup])
-
-                        with open(abs_param_file, 'r') as f:
-                            finished = json.load(f).get('event_stop')
+                        trade_setup = self.set_fromdate_for_iteration(trade_setup_persistence)
+                        finished = trade_setup.get('event_stop')
 
                         assert iteration <= 21
                         candle_state, path = cs_persistence.get_last_candle_state()
@@ -196,35 +199,31 @@ class TestTrailingStopLossRestore(unittest.TestCase):
 
                         iteration_index += 1
 
-    def set_fromdate_for_iteration(self, abs_param_file, iteration_index):
-        with open(abs_param_file, 'r') as f:
-            trade_setup = json.load(f)
+    def set_fromdate_for_iteration(self, trade_setup_persistence):
+        trade_setup = trade_setup_persistence.get_setup()
         fromdate = dt.datetime(
             trade_setup['fromdate']['year'],
             trade_setup['fromdate']['month'],
             trade_setup['fromdate']['day'],
             trade_setup['fromdate']['hour'],
             trade_setup['fromdate']['minute'])
-        # This moves the fromdate forward depending on the timeframe and
-        # how many iterations have been passed already.
-        # e.g. for the 5th iteration of 15min timeframes: {'minutes': 5 * 15}
+        # This moves the fromdate forward depending on the timeframe
+        # e.g. for the 15min timeframes: {'minutes': 15}
         fromdate = fromdate + bt.datetime.timedelta(**{
-            trade_setup['timeframe']: iteration_index * trade_setup['compression']
+            trade_setup['timeframe']: trade_setup['compression']
         })
-        ts_from = trade_setup['fromdate']
+        ts_from = {}
         ts_from['year'] = fromdate.year
         ts_from['month'] = fromdate.month
         ts_from['day'] = fromdate.day
         ts_from['hour'] = fromdate.hour
         ts_from['minute'] = fromdate.minute
-        return trade_setup
+        trade_setup_persistence.update_setup({'fromdate': ts_from})
+        return trade_setup_persistence.get_setup()
 
-    def initialize_test_data(self, abs_param_file, persistence_type):
+    def initialize_test_data(self, abs_param_file, persistence_type, trade_setup_persistence):
         with open(abs_param_file, 'r') as f:
             prev_data = json.load(f)
-        prev_data['event_stop'] = False
-        with open(abs_param_file, 'w') as outfile:
-            json.dump(prev_data, outfile, indent=4)
 
         trade_parameter = dict(exchange=prev_data['exchange'],
                                pair=prev_data['symbol'],
@@ -232,10 +231,19 @@ class TestTrailingStopLossRestore(unittest.TestCase):
                                month=prev_data['fromdate']['month'],
                                day=prev_data['fromdate']['day'],
                                trade_id=prev_data['name'])
-        cs_persistence = CSPersistenceFactory.get_cs_persistance(persistence_type,
-                                                                 **trade_parameter,
-                                                                 root_path=ROOT_PATH)
+        cs_persistence = PersistenceFactory.get_cs_persistance(persistence_type,
+                                                               **trade_parameter,
+                                                               root_path=ROOT_PATH)
         cs_persistence.delete_trade_folder()
+
+        trade_setup_persistence.delete_setup()
+        prev_data['event_stop'] = False
+        prev_data['candle_state_persistence_type'] = persistence_type.value
+
+
+        # trade_setup_persistence.update_setup({'candle_state_persistence_type': persistence_type.value})
+        trade_setup_persistence.save_setup(prev_data)
+
         return cs_persistence
 
 
